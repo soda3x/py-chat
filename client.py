@@ -89,7 +89,13 @@ def receive():
             message = client.recv(1024).decode('ascii')
             if message == 'NICKNAME':
                 client.send(nickname.encode('ascii'))
-                connected_list.add_item(message)
+            elif message.startswith("ALLCLIENTS"):
+                message = str(message).removeprefix("ALLCLIENTS")
+                nicks = message.split('\n')
+                connected_list.clear()
+                for n in nicks:
+                    if (n != "ALLCLIENTS"):
+                        connected_list.add_item(n)
             else:
                 chat_log.set_text(chat_log.get() + "\n" + message)
         except error:  # case on wrong ip/port details
@@ -118,7 +124,7 @@ def leave():
     global isConnected
     if isConnected is True:
         timestamp = datetime.datetime.now()
-        message = '{} {}: has left the chat room'.format(timestamp, nickname)
+        message = '{} {} has left the chat room'.format(timestamp, nickname)
         client.send(message.encode('ascii'))
         isConnected = False
         quit()

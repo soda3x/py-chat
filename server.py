@@ -16,16 +16,26 @@ def handle(client):
         try:  # recieving valid messages from client
             message = client.recv(1024)
             broadcast(message)
-        except:  # removing clients
-            timestamp = datetime.datetime.now()
-            index = clients.index(client)
-            clients.remove(client)
-            client.close()
-            nickname = nicknames[index]
-            broadcast('{} {} left!'.format(
-                timestamp, ((nickname).encode('ascii'))))
-            nicknames.remove(nickname)
+            message_str = message.decode('ascii')
+            if "has left the chat room" in message_str:
+                remove_client(client, False)
+
+        except ConnectionAbortedError:  # removing clients
+            remove_client(client, True)
             break
+
+
+def remove_client(client, abrupt_dc: bool):
+    timestamp = datetime.datetime.now()
+    index = clients.index(client)
+    clients.remove(client)
+    client.close()
+    nickname = nicknames[index]
+    if abrupt_dc:
+        broadcast('{} {} has left the chat room'.format(
+            timestamp, nickname).encode('ascii'))
+    nicknames.remove(nickname)
+    send_connected_clients_list()
 
 
 def receive():  # accepting multiple clients
@@ -35,13 +45,22 @@ def receive():  # accepting multiple clients
         print("{} Connected with {}".format(str(timestamp), str(address)))
         client.send('NICKNAME'.encode('ascii'))
         nickname = client.recv(1024).decode('ascii')
-        nicknames.append(nickname)
+        if not nickname in nicknames:
+            nicknames.append(nickname)
         clients.append(client)
+        send_connected_clients_list()
         print("{} Nickname is {}".format(str(timestamp), nickname))
         broadcast("{} joined!   ".format(nickname).encode('ascii'))
         client.send('Connected to server!'.encode('ascii'))
         thread = threading.Thread(target=handle, args=(client,))
         thread.start()
+
+
+def send_connected_clients_list():
+    all_clients_str = "ALLCLIENTS"
+    for nick in nicknames:
+        all_clients_str += nick + "\n"
+    broadcast(all_clients_str.encode('ascii'))
 
 
 if len(sys.argv) < 2:
